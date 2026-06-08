@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIVA-5 — ADHD Diagnostic Assessment</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header id="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-badge">DIVA-5</div>
+      <div>
+        <div class="brand-title">Diagnostic Interview for ADHD in adults</div>
+        <div class="brand-sub">Patient version · DSM-5 criteria</div>
+      </div>
+    </div>
+    <div class="scores" id="scores"><!-- filled by JS --></div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- AI assist -->
+  <section id="ai-panel">
+    <h2>✦ AI symptom assistant</h2>
+    <p class="desc">Paste a free-text history, clinical notes, or the patient’s own description below.
+      Claude reads it and <strong>ticks the matching DIVA-5 items</strong> for you (added on top of anything you’ve already selected — it never unticks your choices). Always review before relying on the result.</p>
+    <textarea id="ai-text" placeholder="e.g. Patient reports always losing keys and phone, can't sit through meetings, interrupts colleagues, never finished books even as a child, repeated a school year, messy desk, frequent speeding fines..."></textarea>
+    <div class="ai-row">
+      <button class="btn btn-ai" id="ai-go">Analyse &amp; tick items</button>
+      <span id="ai-status"></span>
+    </div>
+    <div id="ai-result"></div>
+  </section>
+
+  <!-- Patient -->
+  <section id="patient">
+    <div><label>Name of patient</label><input id="p-name" type="text"></div>
+    <div><label>Date of birth</label><input id="p-dob" type="date"></div>
+    <div><label>Sex</label>
+      <select id="p-sex"><option value=""></option><option>Female</option><option>Male</option><option>Other</option></select>
+    </div>
+    <div><label>Date of assessment</label><input id="p-date" type="date"></div>
+  </section>
+
+  <p class="note">Symptoms in adulthood must have been present for at least 6 months; childhood symptoms relate to ages 5–12.
+    A symptom counts toward ADHD only if it has a chronic, trait-like course (not episodic) and is present in <em>both</em> periods.</p>
+
+  <!-- Parts rendered by JS -->
+  <div id="part1"></div>
+  <div id="part2"></div>
+  <div id="part3"></div>
+
+</main>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <div class="toolbar-inner">
+    <button class="btn btn-ghost" id="btn-print">🖨 Print / PDF</button>
+    <button class="btn btn-ghost" id="btn-save">💾 Save (JSON)</button>
+    <button class="btn btn-ghost" id="btn-load">📂 Load</button>
+    <button class="btn btn-ghost" id="btn-reset">↺ Reset</button>
+    <input type="file" id="file-load" accept="application/json" hidden>
+    <span class="spacer"></span>
+    <span class="small" id="autosave-note">Autosaved locally</span>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
