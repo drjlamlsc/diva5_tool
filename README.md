@@ -1,8 +1,15 @@
 # DIVA-5 Tool
 
-A single-page web app of the **DIVA-5 (Diagnostic Interview for ADHD in adults)** — Patient version, scored against DSM-5 criteria — with an **AI symptom assistant** that reads free-text history and automatically ticks the matching DIVA-5 items.
+A single-page web app of the **DIVA-5 Diagnostic Interview for ADHD**, scored against DSM-5, with a header toggle between two instruments:
+
+- **Adult · 17+** — the standard DIVA-5 (Patient version): current adulthood + retrospective childhood (5–12), adult threshold (≥5).
+- **Young · 5–17** — a Young DIVA-5–style interview for children & adolescents: *current* symptoms across **Home** and **School/College** settings, youth threshold (≥6), DSM-5 cross-setting (≥2 settings) and onset-before-12 checks, and the five Young DIVA impairment areas.
+
+Each question has a free-text box where **Claude** reads a description and ticks the matching items across the whole form.
 
 🔗 **Live:** https://drjlamlsc.github.io/diva5_tool/
+
+> ⚕️ The **Young** instrument is built on the canonical DSM-5 criteria with age-appropriate Home/School examples adapted for ages 5–17 (the official Young DIVA-5 is registration-gated at the DIVA Foundation). Obtain the official Young DIVA-5 for the validated example wording. Use the **Adult** instrument only for ages 17+.
 
 ## Features
 

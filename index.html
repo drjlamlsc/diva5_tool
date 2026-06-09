@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DIVA-5 — ADHD Diagnostic Assessment</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 
@@ -14,9 +14,13 @@
     <div class="brand">
       <div class="brand-badge">DIVA-5</div>
       <div>
-        <div class="brand-title">Diagnostic Interview for ADHD in adults</div>
-        <div class="brand-sub">Patient version · DSM-5 criteria</div>
+        <div class="brand-title" id="brand-title">Diagnostic Interview for ADHD in adults</div>
+        <div class="brand-sub" id="brand-sub">Patient version · DSM-5 criteria</div>
       </div>
+    </div>
+    <div class="mode-toggle" id="mode-toggle">
+      <button type="button" data-mode="adult">Adult · 17+</button>
+      <button type="button" data-mode="young">Young · 5–17</button>
     </div>
     <div class="scores" id="scores"><!-- filled by JS --></div>
   </div>
@@ -34,10 +38,7 @@
     <div><label>Date of assessment</label><input id="p-date" type="date"></div>
   </section>
 
-  <p class="note">Symptoms in adulthood must have been present for at least 6 months; childhood symptoms relate to ages 5–12.
-    A symptom counts toward ADHD only if it has a chronic, trait-like course (not episodic) and is present in <em>both</em> periods.
-    The conclusion above updates live as you tick boxes. Under each question you can type a free-text description and let
-    <strong>✦ AI</strong> tick the matching items — anywhere in the form, not just that question.</p>
+  <p class="note" id="intro-note"></p>
 
   <!-- Parts rendered by JS -->
   <div id="part1"></div>
@@ -59,7 +60,8 @@
   </div>
 </div>
 
-<script src="data.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="data.js?v=3"></script>
+<script src="data_young.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
