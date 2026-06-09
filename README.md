@@ -7,8 +7,8 @@ A single-page web app of the **DIVA-5 (Diagnostic Interview for ADHD in adults)*
 ## Features
 
 - **Full DIVA-5 interview** — all 18 symptom criteria (Part 1 attention deficit A1–A9, Part 2 hyperactivity/impulsivity H1–H9) with the official adulthood and childhood example prompts, plus Part 3 impairment (criteria B onset, C the five life domains for adulthood and childhood, D).
-- **Live DSM-5 scoring** — a sticky scoreboard counts symptoms per domain/period against the thresholds (≥5 adult, ≥6 childhood) and shows the presentation (Inattentive / Hyperactive-Impulsive / Combined) and whether full ADHD criteria are met.
-- **AI symptom assistant** — paste a history or clinical note; Claude (via `xiaoai.plus`) selects the items clearly supported by the text and ticks them **additively** (it never unticks your own choices), sets the "symptoms present" flags, onset, and impairment, and explains what it based the selections on.
+- **Live DSM-5 scoring** — the sticky scoreboard updates in real time as you tick boxes. A criterion counts as "present" for a period when ≥1 of its example boxes in that column is ticked; counts are compared against the thresholds (≥5 adult, ≥6 childhood) and the presentation (Inattentive / Hyperactive-Impulsive / Combined) plus full-criteria status are shown. Each card also shows live Adult/Child "present" indicators, and impairment areas are counted live (≥2 needed).
+- **Per-criterion AI helper** — under every question there's a free-text box. Type a description (history, clinical note, the patient's own words) and Claude (via `xiaoai.plus`) ticks the matching items **across the whole form** — not just that criterion — **additively** (it never unticks your own choices), and can set the onset flag.
 - **Local-first** — answers autosave to your browser; Save/Load JSON; Print / export to PDF. No data leaves the browser except the free text you send to the AI assistant.
 
 ## Files
@@ -21,9 +21,9 @@ A single-page web app of the **DIVA-5 (Diagnostic Interview for ADHD in adults)*
 | `app.js` | Rendering, scoring, autosave, import/export, Claude integration |
 | `DIVA-5-Adult-PATIENT-VERSION.pdf` | Source instrument |
 
-## How the AI assistant works
+## How the AI helper works
 
-`app.js` builds a catalog of every example item (`{id, text, criterion, period}`) and sends it with the free text to the Anthropic-compatible Messages API at `https://xiaoai.plus/v1/messages` (model `claude-sonnet-4-6`). Claude returns strict JSON listing the item ids to check; the app applies them and updates the score.
+Each per-criterion text box sends its text plus a catalog of **every** example item (`{id, text, criterion, period}`) to the Anthropic-compatible Messages API at `https://xiaoai.plus/v1/messages` (model `claude-sonnet-4-6`). Claude returns strict JSON listing the item ids to check anywhere in the form; the app ticks them and the score recomputes live.
 
 The endpoint is CORS-enabled, so the site runs as pure static hosting with no backend.
 

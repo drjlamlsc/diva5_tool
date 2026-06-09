@@ -1,6 +1,10 @@
 /* ============================================================
    DIVA-5 web app — rendering, DSM-5 scoring, autosave,
    import/export, and Claude-powered symptom extraction.
+
+   Scoring is derived LIVE from the ticked example boxes:
+   a criterion counts as "present" for a period when at least
+   one of its example boxes in that column is ticked.
    ============================================================ */
 
 /* ---- Claude / xiaoai.plus config ---- */
@@ -21,13 +25,14 @@ function optHTML(id, label){
   return `<label class="opt" data-opt="${id}">
     <input type="checkbox" data-id="${id}"><span>${esc(label)}</span></label>`;
 }
-function presentHTML(code, period){
-  return `<div class="present" data-present="${code}::present::${period}">
-    <span class="lab">Symptoms present in ${period==='a'?'adulthood':'childhood'}?</span>
-    <span class="seg">
-      <button type="button" class="yes" data-val="yes">Yes</button>
-      <button type="button" class="no"  data-val="no">No</button>
-    </span></div>`;
+function aiBoxHTML(code){
+  return `<div class="card-ai">
+    <textarea class="cai-text" data-cai="${code}"
+      placeholder="Describe in your own words — ✦ AI ticks the matching items anywhere in the form…"></textarea>
+    <div class="cai-row">
+      <button type="button" class="btn btn-ai cai-go" data-cai="${code}">✦ Tick matching items</button>
+      <span class="cai-status" data-cai="${code}"></span>
+    </div></div>`;
 }
 function cardHTML(item){
   const a = item.adult.map((l,i)=>optHTML(`${item.code}::a::${i}`, l)).join('');
@@ -36,17 +41,16 @@ function cardHTML(item){
     <div class="card-head">
       <span class="code-chip">${item.code}</span>
       <span class="card-q">${esc(item.q)}</span>
+      <span class="pchip" data-pchip="${item.code}">
+        <span class="pdot" data-pdot="${item.code}::a">Adult</span>
+        <span class="pdot" data-pdot="${item.code}::c">Child</span>
+      </span>
     </div>
     <div class="card-body">
-      <div class="col">
-        <div class="col-title">Examples — adulthood</div>${a}
-        ${presentHTML(item.code,'a')}
-      </div>
-      <div class="col">
-        <div class="col-title">Examples — childhood (age 5–12)</div>${c}
-        ${presentHTML(item.code,'c')}
-      </div>
-    </div></div>`;
+      <div class="col"><div class="col-title">Examples — adulthood</div>${a}</div>
+      <div class="col"><div class="col-title">Examples — childhood (age 5–12)</div>${c}</div>
+    </div>
+    ${aiBoxHTML(item.code)}</div>`;
 }
 
 function domainHTML(scope, dom){
@@ -77,20 +81,18 @@ function render(){
         <input type="number" id="onset-age" min="0" max="80" placeholder="—">
       </div>
     </div>
-    <div class="crit-box"><h3>Criterion C — Impairment in adulthood</h3>
-      <p class="note">In which areas are there problems as a result of the symptoms? (Diagnosis needs impairment in ≥2 areas.)</p>
+    <div class="crit-box"><h3>Criterion C — Impairment in adulthood
+        <span class="imp-count" id="impA-count"></span></h3>
+      <p class="note">In which areas are there problems as a result of the symptoms? (Diagnosis needs impairment in ≥2 areas — derived live from the ticks below.)</p>
       ${DOMAINS_ADULT.map(d=>domainHTML('adult',d)).join('')}
-      <div class="present" data-present="impair::present::a"><span class="lab">Evidence of impairment in two or more areas (adulthood)?</span>
-        <span class="seg"><button type="button" class="yes" data-val="yes">Yes</button><button type="button" class="no" data-val="no">No</button></span></div>
     </div>
-    <div class="crit-box"><h3>Criterion C — Impairment in childhood / adolescence</h3>
+    <div class="crit-box"><h3>Criterion C — Impairment in childhood / adolescence
+        <span class="imp-count" id="impC-count"></span></h3>
       ${DOMAINS_CHILD.map(d=>domainHTML('child',d)).join('')}
-      <div class="present" data-present="impair::present::c"><span class="lab">Evidence of impairment in two or more areas (childhood)?</span>
-        <span class="seg"><button type="button" class="yes" data-val="yes">Yes</button><button type="button" class="no" data-val="no">No</button></span></div>
     </div>`;
 }
 
-/* ---------- present-toggle (segmented) behaviour ---------- */
+/* ---------- onset segmented toggle ---------- */
 function wireSegments(){
   $$('[data-present]').forEach(seg=>{
     seg.querySelectorAll('button').forEach(btn=>{
@@ -114,14 +116,22 @@ function setPresent(key,val){
   seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.val===val));
 }
 
-/* ---------- scoring ---------- */
-function countMet(list){          // counts criteria present in BOTH periods
-  let bothA=0, bothC=0, adult=0, child=0;
+/* ---------- scoring (derived from ticked boxes) ---------- */
+function periodPresent(code, period){            // ≥1 example box ticked in that column
+  return $$(`input[data-id^="${code}::${period}::"]:checked`).length > 0;
+}
+function domainsImpaired(scope){                  // # of life areas with ≥1 ticked box
+  const doms = scope==='adult' ? DOMAINS_ADULT : DOMAINS_CHILD;
+  return doms.filter(d => $$(`input[data-id^="dom::${scope}::${d.key}::"]:checked`).length > 0).length;
+}
+function countMet(list){
+  let adult=0, child=0;
   list.forEach(it=>{
-    const a = getPresent(`${it.code}::present::a`)==='yes';
-    const c = getPresent(`${it.code}::present::c`)==='yes';
+    const a = periodPresent(it.code,'a'), c = periodPresent(it.code,'c');
     if(a) adult++; if(c) child++;
-    if(a) bothA++; if(c) bothC++;
+    const da=$(`[data-pdot="${it.code}::a"]`), dc=$(`[data-pdot="${it.code}::c"]`);
+    if(da) da.classList.toggle('on', a);
+    if(dc) dc.classList.toggle('on', c);
   });
   return {adult, child};
 }
@@ -130,9 +140,14 @@ function score(){
   const hi = countMet(PART2);
   const iaMet = ia.adult>=THRESH_ADULT && ia.child>=THRESH_CHILD;
   const hiMet = hi.adult>=THRESH_ADULT && hi.child>=THRESH_CHILD;
-  const onset  = getPresent('onset::present::x')==='yes';
-  const impA   = getPresent('impair::present::a')==='yes';
-  const impC   = getPresent('impair::present::c')==='yes';
+
+  const onset = getPresent('onset::present::x')==='yes';
+  const nA = domainsImpaired('adult'), nC = domainsImpaired('child');
+  const impA = nA>=2, impC = nC>=2;
+
+  const ac=$('#impA-count'), cc=$('#impC-count');
+  if(ac){ ac.textContent = `— ${nA}/5 area${nA!==1?'s':''} ${impA?'✓':''}`; ac.className='imp-count'+(impA?' met':''); }
+  if(cc){ cc.textContent = `— ${nC}/5 area${nC!==1?'s':''} ${impC?'✓':''}`; cc.className='imp-count'+(impC?' met':''); }
 
   let presentation='—', verdict='Incomplete', cls='';
   if(iaMet||hiMet){
@@ -180,37 +195,33 @@ function apply(state){
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(collect())); }
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ return null; } }
 
-/* ---------- AI extraction ---------- */
+/* ---------- AI extraction (per-card, applies across whole form) ---------- */
 function buildCatalog(){
   const cat=[];
-  const push=(arr,scope)=>arr.forEach(it=>{
+  [...PART1,...PART2].forEach(it=>{
     it.adult.forEach((l,i)=>cat.push({id:`${it.code}::a::${i}`, t:l, c:it.code, p:'adult'}));
     it.child.forEach((l,i)=>cat.push({id:`${it.code}::c::${i}`, t:l, c:it.code, p:'child'}));
   });
-  push(PART1); push(PART2);
   DOMAINS_ADULT.forEach(d=>d.items.forEach((l,i)=>cat.push({id:`dom::adult::${d.key}::${i}`, t:l, c:'impairment', p:'adult'})));
   DOMAINS_CHILD.forEach(d=>d.items.forEach((l,i)=>cat.push({id:`dom::child::${d.key}::${i}`, t:l, c:'impairment', p:'child'})));
   return cat;
 }
 
-async function aiAnalyse(){
-  const text = $('#ai-text').value.trim();
-  if(!text){ setStatus('Enter some text first.'); return; }
-  const btn=$('#ai-go'); btn.disabled=true; setStatus('Analysing with Claude…');
+async function aiAnalyse(code, btn, statusEl){
+  const ta = $(`textarea.cai-text[data-cai="${code}"]`);
+  const text = ta ? ta.value.trim() : '';
+  if(!text){ statusEl.textContent='Type a description first.'; return; }
+  btn.disabled=true; statusEl.textContent='Analysing…';
 
   const catalog = buildCatalog();
-  const sys = `You are a clinical assistant helping complete the DIVA-5 (Diagnostic Interview for ADHD in adults).
-You are given (1) the patient's free-text history and (2) a catalog of DIVA-5 example items, each with an "id", text "t", criterion "c" and period "p" (adult or child).
-Select ONLY the items whose described behaviour is clearly supported by the free text. Do not infer beyond what is stated. Match adulthood statements to period "adult" and childhood statements to period "child".
-Also decide, for each ADHD criterion code (A1-A9, H1-H9), whether the text gives enough evidence to mark "symptoms present" for adulthood and/or childhood, and whether there is impairment in ≥2 life areas in adulthood/childhood.
-Return STRICT JSON only (no markdown, no prose), shape:
+  const sys = `You help complete the DIVA-5 (Diagnostic Interview for ADHD in adults).
+You receive (1) a free-text description and (2) a catalog of DIVA-5 example items, each with "id", text "t", criterion "c" and period "p" (adult or child).
+Select EVERY item across the WHOLE catalog whose behaviour is clearly supported by the text — not only one criterion. Do not infer beyond what is stated. Match adulthood statements to period "adult" and childhood statements to period "child"; if the text doesn't specify a period, choose the period that best fits the described age.
+Return STRICT JSON only (no markdown, no prose):
 {"items":["<id>",...],
- "present":[{"code":"A1","period":"a"},{"code":"H3","period":"c"}],
- "impair":{"a":true,"c":false},
  "onset":true|false|null,
- "notes":"one short sentence on what you based selections on"}
-Use period "a" for adulthood and "c" for childhood in the "present" array. onset = were several symptoms present before age 12 per the text (null if unstated).`;
-
+ "notes":"one short sentence on what you based the selection on"}
+onset = whether the text indicates several symptoms were present before age 12 (null if unstated).`;
   const user = `FREE TEXT:\n"""${text}"""\n\nCATALOG (JSON):\n${JSON.stringify(catalog)}`;
 
   try{
@@ -220,13 +231,17 @@ Use period "a" for adulthood and "c" for childhood in the "present" array. onset
       body:JSON.stringify({model:CLAUDE_MODEL, max_tokens:2000, system:sys, messages:[{role:'user',content:user}]})
     });
     const data = await r.json();
-    if(data.error){ setStatus('API error: '+(data.error.message||'unknown')); btn.disabled=false; return; }
+    if(data.error){ statusEl.textContent='API error: '+(data.error.message||'unknown'); btn.disabled=false; return; }
     const raw = (data.content||[]).map(b=>b.text||'').join('');
     const parsed = parseJSON(raw);
-    if(!parsed){ setStatus('Could not parse AI response.'); btn.disabled=false; return; }
-    applyAI(parsed);
+    if(!parsed){ statusEl.textContent='Could not parse AI response.'; btn.disabled=false; return; }
+    const added = applyAI(parsed);
+    statusEl.textContent = added>0
+      ? `✦ Ticked ${added} item${added!==1?'s':''} across the form.`
+      : 'No new items matched.';
+    if(parsed.notes) statusEl.title = parsed.notes;
   }catch(e){
-    setStatus('Request failed: '+e.message);
+    statusEl.textContent='Request failed: '+e.message;
   }
   btn.disabled=false;
 }
@@ -239,36 +254,18 @@ function parseJSON(s){
 }
 
 function applyAI(res){
-  let added=0; const addedLabels=[];
+  let added=0;
   (res.items||[]).forEach(id=>{
     const el=$(`input[data-id="${CSS.escape(id)}"]`);
     if(el && !el.checked){
       el.checked=true; added++;
-      const lab=el.closest('.opt'); if(lab){ lab.classList.add('ai-added'); addedLabels.push(lab.textContent.trim()); }
+      const lab=el.closest('.opt'); if(lab) lab.classList.add('ai-added');
     }
   });
-  let presSet=0;
-  (res.present||[]).forEach(p=>{
-    const period = p.period==='c'||p.period==='child' ? 'c' : 'a';
-    const key=`${p.code}::present::${period}`;
-    if($(`[data-present="${key}"]`) && getPresent(key)!=='yes'){ setPresent(key,'yes'); presSet++; }
-  });
-  if(res.impair){
-    if(res.impair.a===true && getPresent('impair::present::a')!=='yes') setPresent('impair::present::a','yes');
-    if(res.impair.c===true && getPresent('impair::present::c')!=='yes') setPresent('impair::present::c','yes');
-  }
   if(res.onset===true && getPresent('onset::present::x')!=='yes') setPresent('onset::present::x','yes');
-
   score(); save();
-  const box=$('#ai-result'); box.classList.add('show');
-  box.innerHTML = `<div class="summary"><strong>✦ Added ${added} item${added!==1?'s':''}${presSet?` and set ${presSet} “present” flag${presSet!==1?'s':''}`:''}.</strong>
-    ${res.notes?`<br><em>${esc(res.notes)}</em>`:''}
-    ${addedLabels.length?`<ul>${addedLabels.slice(0,40).map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:'<br>No new items matched the text.'}
-    <br><small>Review every selection — AI assistance is not a diagnosis.</small></div>`;
-  setStatus('Done.');
-  if(addedLabels.length) $('#card-'+(res.present?.[0]?.code||'A1'))?.scrollIntoView({behavior:'smooth',block:'center'});
+  return added;
 }
-function setStatus(m){ $('#ai-status').textContent=m; }
 
 /* ---------- toolbar ---------- */
 function download(name, content, type='application/json'){
@@ -294,6 +291,8 @@ function resetUI(){
   $$('input[type=checkbox][data-id]').forEach(c=>c.checked=false);
   $$('.opt.ai-added').forEach(o=>o.classList.remove('ai-added'));
   $$('[data-present] button').forEach(b=>b.classList.remove('on'));
+  $$('textarea.cai-text').forEach(t=>t.value='');
+  $$('.cai-status').forEach(s=>s.textContent='');
   ['p-name','p-dob','p-sex','p-date','onset-age'].forEach(id=>$('#'+id).value='');
 }
 
@@ -301,8 +300,13 @@ function resetUI(){
 render();
 wireSegments();
 wireToolbar();
-$('#ai-go').onclick=aiAnalyse;
-document.addEventListener('change',e=>{ if(e.target.matches('input[type=checkbox][data-id]')) save(); });
+$$('.cai-go').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const code=btn.dataset.cai;
+    aiAnalyse(code, btn, $(`.cai-status[data-cai="${code}"]`));
+  });
+});
+document.addEventListener('change',e=>{ if(e.target.matches('input[type=checkbox][data-id]')){ score(); save(); } });
 ['p-name','p-dob','p-sex','p-date','onset-age'].forEach(id=>$('#'+id).addEventListener('input',save));
 apply(load());
 score();

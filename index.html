@@ -24,19 +24,6 @@
 
 <main id="main">
 
-  <!-- AI assist -->
-  <section id="ai-panel">
-    <h2>✦ AI symptom assistant</h2>
-    <p class="desc">Paste a free-text history, clinical notes, or the patient’s own description below.
-      Claude reads it and <strong>ticks the matching DIVA-5 items</strong> for you (added on top of anything you’ve already selected — it never unticks your choices). Always review before relying on the result.</p>
-    <textarea id="ai-text" placeholder="e.g. Patient reports always losing keys and phone, can't sit through meetings, interrupts colleagues, never finished books even as a child, repeated a school year, messy desk, frequent speeding fines..."></textarea>
-    <div class="ai-row">
-      <button class="btn btn-ai" id="ai-go">Analyse &amp; tick items</button>
-      <span id="ai-status"></span>
-    </div>
-    <div id="ai-result"></div>
-  </section>
-
   <!-- Patient -->
   <section id="patient">
     <div><label>Name of patient</label><input id="p-name" type="text"></div>
@@ -48,7 +35,9 @@
   </section>
 
   <p class="note">Symptoms in adulthood must have been present for at least 6 months; childhood symptoms relate to ages 5–12.
-    A symptom counts toward ADHD only if it has a chronic, trait-like course (not episodic) and is present in <em>both</em> periods.</p>
+    A symptom counts toward ADHD only if it has a chronic, trait-like course (not episodic) and is present in <em>both</em> periods.
+    The conclusion above updates live as you tick boxes. Under each question you can type a free-text description and let
+    <strong>✦ AI</strong> tick the matching items — anywhere in the form, not just that question.</p>
 
   <!-- Parts rendered by JS -->
   <div id="part1"></div>

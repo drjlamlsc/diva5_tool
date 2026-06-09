@@ -48,7 +48,20 @@ body{font-family:'Outfit',system-ui,-apple-system,sans-serif;background:var(--bg
 .opt.ai-added span{color:var(--ai)}
 @keyframes flash{0%{background:#ddd6fe}100%{background:var(--ai-bg)}}
 
-/* ── Present toggle ── */
+/* ── Per-card live present indicator ── */
+.pchip{margin-left:auto;display:flex;gap:6px;flex:none;align-items:center}
+.pdot{font-size:10px;font-weight:700;border-radius:5px;padding:2px 7px;border:1px solid var(--line);color:var(--muted);background:#fff;white-space:nowrap}
+.pdot.on{background:var(--green);border-color:var(--green);color:#fff}
+
+/* ── Per-card AI helper ── */
+.card-ai{border-top:1px solid var(--line);background:#faf9ff;padding:10px 16px}
+.card-ai textarea{width:100%;min-height:42px;border:1px solid #ddd6fe;border-radius:7px;padding:8px 10px;font:inherit;font-size:12.5px;resize:vertical;background:#fff}
+.card-ai textarea:focus{outline:2px solid var(--ai);border-color:var(--ai)}
+.cai-row{display:flex;gap:10px;align-items:center;margin-top:7px;flex-wrap:wrap}
+.cai-go{padding:6px 13px;font-size:12px}
+.cai-status{font-size:11.5px;color:var(--ai);font-weight:600}
+
+/* ── Present toggle (onset only) ── */
 .present{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)}
 .present .lab{font-size:12px;font-weight:600}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
@@ -84,6 +97,8 @@ body{font-family:'Outfit',system-ui,-apple-system,sans-serif;background:var(--bg
 /* ── Onset / criterion B ── */
 .crit-box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
 .crit-box h3{font-size:13px;margin-bottom:8px}
+.imp-count{font-weight:600;color:var(--muted);font-size:12px}
+.imp-count.met{color:var(--green)}
 .inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .inline input[type=number]{width:80px;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit}
 
