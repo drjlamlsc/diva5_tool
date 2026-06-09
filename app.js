@@ -307,7 +307,28 @@ function wireCaiButtons(){
 /* ============================================================
    Case note (HPI) generator
    ============================================================ */
-const HOUSE_STYLE = `Write in concise professional psychiatric case-note style: third person, factual, flowing prose in short paragraphs. Clinical register; common note abbreviations are acceptable (c/o, h/o, nil). Integrate the clinician's free-text remarks (paraphrase but keep their clinical meaning) together with the endorsed checklist findings. Do NOT invent information that is not provided. Output the History of Presenting Illness ONLY — no diagnosis, mental state exam, management or plan.`;
+const HOUSE_STYLE = `Write in the clinician's house case-note style — terse TELEGRAPHIC notes, NOT prose:
+- One observation per line; short clauses; drop the subject pronoun and articles where natural (e.g. "difficult to sustain attention e.g. in class, during HW"; "often loses belongings e.g. stationeries, jackets").
+- Lead concrete examples with "e.g." and keep the specific detail / quantities / quotes from the input (durations, counts, marks, "buttock cannot stick to the seat").
+- Compress the ticked checklist phrases into this terse register — do NOT quote them verbatim or pad them into full sentences.
+- Use common clinical shorthand naturally: hx, ax (assessed), c/o, h/o, HW (homework), ADL, SE (side effects), yo; keep any abbreviations already present in the input (e.g. PS, KG, F1, F3, SS, SSW, SDR, LA). Do NOT invent facts or abbreviations not supported by the input.
+- Third person; lowercase line-starts are fine; minimal punctuation; no full sentences; no markdown; no bullet characters — just plain new lines.
+- Group related points into short blocks separated by a blank line. Do NOT add section headings, labels or capitalised banners (no "INATTENTION", "FUNCTIONAL IMPAIRMENT" etc.) — just blank-line-separated blocks.
+- Do NOT tag lines with criterion codes (A1, H1…) or setting codes, and do NOT include symptom counts, DSM thresholds, the presentation, or any scoring / diagnostic summary — this is the narrative history only.
+- State pertinent negatives explicitly when a domain is clearly absent (e.g. "adequate patience for queuing", "no other hyperactivity or impulsivity feature").
+- Output the History of Presenting Illness ONLY — no diagnosis, MSE, management or plan.
+Example of the required register (format only — do not copy this content):
+"""
+short attention span ~10 min; easily distracted by surroundings
+many careless mistakes, esp in math & english; misses questions in exams
+dislikes tasks requiring sustained attention e.g. reading comprehension
+forgetful in ADL e.g. appointments, what she needs to do
+often loses belongings e.g. stationeries, jackets
+
+fidgety in seat, often asks to leave
+speech tends to jump topics quickly
+adequate patience for queuing; no prominent impulsivity
+"""`;
 
 function gatherClinical(){
   const c=cfg();
@@ -329,7 +350,6 @@ function gatherClinical(){
     instrument: MODE==='young' ? 'Young DIVA-5 (ADHD in young people, ages 5–17)' : 'DIVA-5 (ADHD in adults)',
     patient:{name:$('#p-name').value, dob:$('#p-dob').value, sex:$('#p-sex').value, date:$('#p-date').value},
     ageOfOnsetBefore12: getPresent('onset::present::x'), onsetAge:$('#onset-age').value,
-    conclusion: $('#scores').innerText.replace(/\s+/g,' ').trim(),
     inattention: sym.filter(s=>s.code[0]==='A'),
     hyperactivityImpulsivity: sym.filter(s=>s.code[0]==='H'),
     impairment,
@@ -346,9 +366,11 @@ async function generateCaseNote(){
   btn.disabled=true; st.textContent='Drafting…';
   const subject = MODE==='young' ? (data.patient.name||'the young person') : (data.patient.name||'the patient');
   const settings = MODE==='young' ? 'home and school/college' : 'adulthood, plus childhood (ages 5–12)';
-  const sys = `You are a psychiatrist documenting an ADHD assessment based on the ${data.instrument}. ${HOUSE_STYLE}
-Structure the HPI as a flowing narrative covering, where data exists: presenting concerns; current inattentive symptoms with brief illustrative examples; current hyperactive/impulsive symptoms; the cross-setting picture (${settings}); developmental history and age of onset; and functional impairment across life domains. Refer to the subject as "${subject}". Output plain text only, ready to paste into a case-note file — no markdown headings or bullet characters.`;
-  const user = `Structured findings (JSON). For each symptom the ticked examples are grouped by setting/period, with any free-text clinician note:\n${JSON.stringify(data,null,1)}`;
+  const sys = `You are a psychiatrist writing the History of Presenting Illness for an ADHD assessment based on the ${data.instrument}. ${HOUSE_STYLE}
+Cover, where data exists and in roughly this order: presenting concern / relevant background; inattention features; hyperactivity-impulsivity features; cross-setting picture (${settings}); developmental hx and age of onset; functional impairment across life domains; and any treatment already tried if mentioned. Weave the clinician's free-text notes together with the ticked checklist items. Refer to the subject as "${subject}".`;
+  const strip = arr => arr.map(({code, ...rest})=>rest);
+  const payload = {...data, inattention:strip(data.inattention), hyperactivityImpulsivity:strip(data.hyperactivityImpulsivity)};
+  const user = `Structured findings (JSON). For each symptom the ticked examples are grouped by setting/period, with any free-text clinician note. Prioritise the clinician's free-text notes (they carry the specifics) and use the ticked items to fill out the picture:\n${JSON.stringify(payload,null,1)}`;
   try{
     const r=await fetch(CLAUDE_API,{method:'POST',headers:{'Content-Type':'application/json','x-api-key':CLAUDE_API_KEY,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({model:CLAUDE_MODEL,max_tokens:2000,system:sys,messages:[{role:'user',content:user}]})});
