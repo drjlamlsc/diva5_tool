@@ -62,10 +62,10 @@ const stateKey = m => `diva5_state_${m||MODE}`;
 function optHTML(id, label){
   return `<label class="opt" data-opt="${id}"><input type="checkbox" data-id="${id}"><span>${esc(label)}</span></label>`;
 }
-function aiBoxHTML(code){
+function aiBoxHTML(code, placeholder){
+  const ph = placeholder || 'Describe in your own words — ✦ AI ticks the matching items anywhere in the form…';
   return `<div class="card-ai">
-    <textarea class="cai-text" data-cai="${code}"
-      placeholder="Describe in your own words — ✦ AI ticks the matching items anywhere in the form…"></textarea>
+    <textarea class="cai-text" data-cai="${code}" placeholder="${esc(ph)}"></textarea>
     <div class="cai-row">
       <button type="button" class="btn btn-ai cai-go" data-cai="${code}">✦ Tick matching items</button>
       <span class="cai-status" data-cai="${code}"></span>
@@ -117,9 +117,10 @@ function buildUI(){
         <span>If no, starting from age</span>
         <input type="number" id="onset-age" min="0" max="80" placeholder="—">
       </div></div>`;
-  const impairBoxes = c.impair.map(im=>`
+  const impairBoxes = c.impair.map((im,idx)=>`
     <div class="crit-box"><h3>${im.title} <span class="imp-count" id="imp-${im.scope}-count"></span></h3>
       ${im.hint?`<p class="note">${im.hint}</p>`:''}
+      ${idx===0 ? aiBoxHTML('impair', 'Describe problems / impairment in daily life — ✦ AI ticks the matching areas anywhere in the form…') : ''}
       ${im.doms.map(d=>domainHTML(im.scope,d)).join('')}
     </div>`).join('');
   $('#part3').innerHTML = `<div class="section-title">Part 3 · Impairment (DSM-5 criteria B, C, D)</div>${onsetBox}${impairBoxes}`;
@@ -304,6 +305,71 @@ function wireCaiButtons(){
 }
 
 /* ============================================================
+   Case note (HPI) generator
+   ============================================================ */
+const HOUSE_STYLE = `Write in concise professional psychiatric case-note style: third person, factual, flowing prose in short paragraphs. Clinical register; common note abbreviations are acceptable (c/o, h/o, nil). Integrate the clinician's free-text remarks (paraphrase but keep their clinical meaning) together with the endorsed checklist findings. Do NOT invent information that is not provided. Output the History of Presenting Illness ONLY — no diagnosis, mental state exam, management or plan.`;
+
+function gatherClinical(){
+  const c=cfg();
+  const sym=[...c.part1,...c.part2].map(it=>{
+    const col=(f,k)=> it[f].map((l,i)=> $(`input[data-id="${it.code}::${k}::${i}"]`)?.checked ? l : null).filter(Boolean);
+    const s1=col(c.f1,c.k1), s2=col(c.f2,c.k2);
+    const free=($(`textarea.cai-text[data-cai="${it.code}"]`)?.value||'').trim();
+    if(!s1.length && !s2.length && !free) return null;
+    return {code:it.code, question:it.q, [c.dot1]:s1, [c.dot2]:s2, clinicianNote:free};
+  }).filter(Boolean);
+  const impairment=c.impair.map(im=>{
+    const areas=im.doms.map(d=>{
+      const items=d.items.filter((l,i)=> $(`input[data-id="dom::${im.scope}::${d.key}::${i}"]`)?.checked);
+      return items.length?{area:d.title, items}:null;
+    }).filter(Boolean);
+    return areas.length?{period:im.title, areas}:null;
+  }).filter(Boolean);
+  return {
+    instrument: MODE==='young' ? 'Young DIVA-5 (ADHD in young people, ages 5–17)' : 'DIVA-5 (ADHD in adults)',
+    patient:{name:$('#p-name').value, dob:$('#p-dob').value, sex:$('#p-sex').value, date:$('#p-date').value},
+    ageOfOnsetBefore12: getPresent('onset::present::x'), onsetAge:$('#onset-age').value,
+    conclusion: $('#scores').innerText.replace(/\s+/g,' ').trim(),
+    inattention: sym.filter(s=>s.code[0]==='A'),
+    hyperactivityImpulsivity: sym.filter(s=>s.code[0]==='H'),
+    impairment,
+    impairmentNote: ($(`textarea.cai-text[data-cai="impair"]`)?.value||'').trim()
+  };
+}
+
+async function generateCaseNote(){
+  const btn=$('#cn-go'), st=$('#cn-status'), out=$('#cn-out');
+  const data=gatherClinical();
+  if(!data.inattention.length && !data.hyperactivityImpulsivity.length && !data.impairment.length && !data.impairmentNote){
+    st.textContent='Tick some items or add notes first.'; return;
+  }
+  btn.disabled=true; st.textContent='Drafting…';
+  const subject = MODE==='young' ? (data.patient.name||'the young person') : (data.patient.name||'the patient');
+  const settings = MODE==='young' ? 'home and school/college' : 'adulthood, plus childhood (ages 5–12)';
+  const sys = `You are a psychiatrist documenting an ADHD assessment based on the ${data.instrument}. ${HOUSE_STYLE}
+Structure the HPI as a flowing narrative covering, where data exists: presenting concerns; current inattentive symptoms with brief illustrative examples; current hyperactive/impulsive symptoms; the cross-setting picture (${settings}); developmental history and age of onset; and functional impairment across life domains. Refer to the subject as "${subject}". Output plain text only, ready to paste into a case-note file — no markdown headings or bullet characters.`;
+  const user = `Structured findings (JSON). For each symptom the ticked examples are grouped by setting/period, with any free-text clinician note:\n${JSON.stringify(data,null,1)}`;
+  try{
+    const r=await fetch(CLAUDE_API,{method:'POST',headers:{'Content-Type':'application/json','x-api-key':CLAUDE_API_KEY,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:CLAUDE_MODEL,max_tokens:2000,system:sys,messages:[{role:'user',content:user}]})});
+    const d=await r.json();
+    if(d.error){ st.textContent='API error: '+(d.error.message||'unknown'); btn.disabled=false; return; }
+    const text=(d.content||[]).map(b=>b.text||'').join('').trim();
+    out.value=text; $('#cn-copy').style.display=text?'inline-block':'none';
+    st.textContent='Draft ready — review before use.';
+  }catch(e){ st.textContent='Request failed: '+e.message; }
+  btn.disabled=false;
+}
+function wireCaseNote(){
+  $('#cn-go').onclick=generateCaseNote;
+  $('#cn-copy').onclick=async()=>{
+    const v=$('#cn-out').value; if(!v) return;
+    try{ await navigator.clipboard.writeText(v); }catch(e){ $('#cn-out').select(); document.execCommand('copy'); }
+    $('#cn-status').textContent='Copied ✓';
+  };
+}
+
+/* ============================================================
    Toolbar
    ============================================================ */
 function download(name,content,type='application/json'){ const b=new Blob([content],{type}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
@@ -330,6 +396,7 @@ function resetUI(){
    ============================================================ */
 buildUI();
 wireToolbar();
+wireCaseNote();
 $$('#mode-toggle button').forEach(b=>b.addEventListener('click',()=>switchMode(b.dataset.mode)));
 document.addEventListener('change',e=>{ if(e.target.matches('input[type=checkbox][data-id]')){ score(); save(); } });
 document.addEventListener('input',e=>{ if(e.target.matches('#p-name,#p-dob,#p-sex,#p-date,#onset-age')) save(); });

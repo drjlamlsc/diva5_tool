@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DIVA-5 — ADHD Diagnostic Assessment</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 
@@ -45,6 +45,17 @@
   <div id="part2"></div>
   <div id="part3"></div>
 
+  <!-- Case note generator -->
+  <section id="casenote">
+    <div class="cn-bar">
+      <button class="btn btn-ai" id="cn-go">📝 Generate HPI case note</button>
+      <button class="btn btn-ghost" id="cn-copy" style="display:none">📋 Copy</button>
+      <span id="cn-status"></span>
+    </div>
+    <p class="note">Drafts the <strong>History of Presenting Illness</strong> only, in clinical case-note style, weaving together your free-text notes and every ticked item. Review and edit before pasting into the record.</p>
+    <textarea id="cn-out" placeholder="The generated HPI will appear here — then press Copy." readonly></textarea>
+  </section>
+
 </main>
 
 <!-- Toolbar -->
@@ -60,8 +71,8 @@
   </div>
 </div>
 
-<script src="data.js?v=3"></script>
-<script src="data_young.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="data.js?v=4"></script>
+<script src="data_young.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
